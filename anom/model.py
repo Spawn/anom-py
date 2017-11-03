@@ -2,6 +2,9 @@ from collections import namedtuple
 from threading import RLock
 from weakref import WeakValueDictionary
 
+from google.cloud.datastore import key
+from google.cloud.proto.datastore.v1 import entity_pb2 as _entity_pb2
+
 from .adapter import PutRequest, get_adapter
 from .query import PropertyFilter, Query
 
@@ -23,11 +26,35 @@ def classname(ob):
     return type(ob).__name__
 
 
-class KeyLike:
+class KeyLike(key.Key):
     """Base class for objects that should be treated as if they are
     datastore keys (for example, when comparing two objects with one
     another).
     """
+
+    def __init__(self, kind, id_or_name=None, parent=None, namespace=None):
+        self._kind = kind
+        self._id_or_name = id_or_name
+        self._parent = parent
+        self._namespace = namespace
+
+    @property
+    def parent(self):
+        return self._parent
+
+    @property
+    def id_or_name(self):
+        return self._id_or_name
+
+    @property
+    def kind(self):
+        if isinstance(self._kind, type) and issubclass(self._kind, Model):
+            return self._kind._kind
+        return self._kind
+
+    @property
+    def namespace(self):
+        return self._namespace
 
 
 class Key(KeyLike, namedtuple("Key", ("kind", "id_or_name", "parent", "namespace"))):
@@ -131,6 +158,23 @@ class Key(KeyLike, namedtuple("Key", ("kind", "id_or_name", "parent", "namespace
           Model: The entity or ``None`` if it does not exist.
         """
         return get_multi([self])[0]
+
+    def to_protobuf(self):
+        """Return a protobuf corresponding to the key.
+
+        :rtype: :class:`.entity_pb2.Key`
+        :returns: The protobuf representing the key.
+        """
+        key = _entity_pb2.Key()
+
+        if self.namespace:
+            key.partition_id.namespace_id = self.namespace
+
+        element = key.path.add()
+        element.kind = self.path[0]
+        element.id = self.path[1]
+
+        return key
 
     def __repr__(self):
         return f"Key({self.kind!r}, {self.id_or_name!r}, parent={self.parent!r}, namespace={self.namespace!r})"
