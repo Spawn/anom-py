@@ -1,15 +1,15 @@
 import base64
 import json
-import msgpack
 import zlib
-
 from datetime import datetime
-from dateutil import tz
 from enum import IntEnum
+
+import msgpack
+from dateutil import tz
+from google.cloud.datastore import Entity
 
 from . import model
 from .model import Property, NotFound, Skip, classname
-
 
 #: The UNIX epoch.
 _epoch = datetime(1970, 1, 1, tzinfo=tz.tzutc())
@@ -622,3 +622,24 @@ class Text(Encodable, Compressable, Property):
     """
 
     _types = (str,)
+
+
+class Structured(Serializer):
+
+    def __init__(self, *, kind=None, **options):
+        super().__init__(**options)
+
+        if isinstance(kind, model.model):
+            self.kind = kind._kind
+        else:
+            self.kind = kind
+
+    def _dumps(cls, value):
+        entity = Entity()
+        for k, v in value.items():
+            entity[k] = v
+        entity['structured'] = True
+        return entity
+
+    def _loads(cls, data):
+        return data

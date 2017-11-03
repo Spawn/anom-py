@@ -1,5 +1,6 @@
 from collections import namedtuple
 
+from anom.structured_helpers import convert_structured_attributes
 
 class PropertyFilter(namedtuple("PropertyFilter", ("name", "operator", "value"))):
     """Represents an individual filter on a Property within a Query.
@@ -128,7 +129,7 @@ class Resultset:
             if self._options.keys_only:
                 yield (key for key, _ in entities)
             else:
-                yield (key.get_model()._load(key, data) for key, data in entities)
+                yield (key.get_model()._load(key, convert_structured_attributes(data)) for key, data in entities)
 
             if remaining is not None and remaining <= 0:
                 break

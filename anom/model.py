@@ -5,6 +5,7 @@ from weakref import WeakValueDictionary
 from google.cloud.datastore import key
 from google.cloud.proto.datastore.v1 import entity_pb2 as _entity_pb2
 
+from anom.structured_helpers import convert_structured_attributes
 from .adapter import PutRequest, get_adapter
 from .query import PropertyFilter, Query
 
@@ -733,7 +734,8 @@ def get_multi(keys):
         # to do here because we've already proved that a model for
         # that kind exists in the previous block.
         model = _known_models[key.kind]
-        entity = model._load(key, entity_data)
+        converted_data = convert_structured_attributes(entity_data)
+        entity = model._load(key, converted_data)
         entities.append(entity)
         entity.post_get_hook()
 

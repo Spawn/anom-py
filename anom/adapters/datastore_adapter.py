@@ -234,10 +234,37 @@ class DatastoreAdapter(Adapter):
         for name, value in data:
             if isinstance(value, Key):
                 value = self._convert_key_to_datastore(value)
-
-            entity[name] = value
+            if isinstance(value, datastore.Entity) and value.get('structured'):
+                value.pop('structured')
+                self._prepare_structured_to_main(entity, name, value)
+            else:
+                entity[name] = value
 
         return entity
+
+    def _prepare_structured_to_main(self, entity, name, value):
+        """
+        Unloads dict-like data from structured sub entity to main fields e.g.:
+
+        From:
+        "address": {
+        "address_line1": "Some address",
+        "city": "Some city",
+        "state": "Some state",
+        "zip": "Some zip"
+        }
+
+        To:
+        {
+        address.address_line1: "Some address"
+        address.city: "Some city"
+        address.state: "Some state"
+        address.zip: "Some zip"
+        }
+        """
+
+        for k, v in value.items():
+            entity[f'{name}.{k}'] = v
 
     def _prepare_to_load(self, entity):
         data = {}
